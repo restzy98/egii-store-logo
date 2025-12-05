@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EGII-STORE - Toko Logo Amanah dan Terpercaya</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase CDN -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <style>
+        html { scroll-behavior: smooth; }
+        @keyframes slideInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideInLeft { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .animate-slideInUp { animation: slideInUp 0.6s ease-out forwards; }
+        .animate-slideInLeft { animation: slideInLeft 0.6s ease-out forwards; }
+        .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+        .animate-scaleIn { animation: scaleIn 0.5s ease-out forwards; }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .delay-100 { animation-delay: 0.1s; opacity: 0; }
+        .delay-200 { animation-delay: 0.2s; opacity: 0; }
+        .delay-300 { animation-delay: 0.3s; opacity: 0; }
+        .delay-400 { animation-delay: 0.4s; opacity: 0; }
+        .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); }
+        .hero-gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDBR3e4TU6CJie4YG2LKig1ISvvVnTOXBA",
+            authDomain: "egii-store.firebaseapp.com",
+            projectId: "egii-store",
+            storageBucket: "egii-store.firebasestorage.app",
+            messagingSenderId: "150232161244",
+            appId: "1:150232161244:web:6bbbc831747fbadc0f0d19",
+            measurementId: "G-TQY6K1DWMW"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Firestore Database Functions
+        const FirestoreDB = {
+            // Products
+            getProducts: async () => {
+                try {
+                    const snapshot = await db.collection('products').get();
+                    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                } catch (e) {
+                    console.error('Error getting products:', e);
+                    return [];
+                }
+            },
+            saveProduct: async (product) => {
+                try {
+                    if (product.id) {
+                        await db.collection('products').doc(product.id.toString()).set(product);
+                    } else {
+                        const newId = Date.now().toString();
+                        await db.collection('products').doc(newId).set({ ...product, id: newId });
+                    }
+                    return true;
+                } catch (e) {
+                    console.error('Error saving product:', e);
+                    return false;
+                }
+            },
+            deleteProduct: async (id) => {
+                try {
+                    await db.collection('products').doc(id.toString()).delete();
+                    return true;
+                } catch (e) {
+                    console.error('Error deleting product:', e);
+                    return false;
+                }
+            },
+            
+            // Promo Codes
+            getPromoCodes: async () => {
+                try {
+                    const snapshot = await db.collection('promoCodes').get();
+                    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                } catch (e) {
+                    console.error('Error getting promo codes:', e);
+                    return [];
+                }
+            },
+            savePromoCode: async (promo) => {
+                try {
+                    if (promo.id) {
+                        await db.collection('promoCodes').doc(promo.id.toString()).set(promo);
+                    } else {
+                        const newId = Date.now().toString();
+                        await db.collection('promoCodes').doc(newId).set({ ...promo, id: newId });
+                    }
+                    return true;
+                } catch (e) {
+                    console.error('Error saving promo:', e);
+                    return false;
+                }
+            },
+            deletePromoCode: async (id) => {
+                try {
+                    await db.collection('promoCodes').doc(id.toString()).delete();
+                    return true;
+                } catch (e) {
+                    console.error('Error deleting promo:', e);
+                    return false;
+                }
+            }
+        };
+
+        // Icons
+        const ShoppingCart = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>);
+        const Heart = ({ size = 24, filled = false }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>);
+        const User = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>);
+        const Search = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>);
+        const Menu = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>);
+        const X = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>);
+        const Edit2 = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>);
+        const Trash2 = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>);
+        const LogOut = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>);
+        const Tag = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>);
+        const Calendar = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>);
+        const ChevronDown = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>);
+        const Star = ({ size = 24, filled = false }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>);
+        const Award = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>);
+        const Shield = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>);
+        const MessageCircle = ({ size = 24 }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>);
+
+        const DB = {
+            save: (key, data) => { try { localStorage.setItem(key, JSON.stringify(data)); return true; } catch (e) { return false; } },
+            load: (key, defaultValue = null) => { try { const data = localStorage.getItem(key); return data ? JSON.parse(data) : defaultValue; } catch (e) { return defaultValue; } }
+        };
+
+        const useScrollAnimation = () => {
+            const [isVisible, setIsVisible] = useState(false);
+            const ref = useRef(null);
+
+            useEffect(() => {
+                const observer = new IntersectionObserver(
+                    ([entry]) => { if (entry.isIntersecting) { setIsVisible(true); observer.disconnect(); } },
+                    { threshold: 0.1 }
+                );
+                if (ref.current) observer.observe(ref.current);
+                return () => observer.disconnect();
+            }, []);
+
+            return [ref, isVisible];
+        };
+const PhoneEcommerce = () => {
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [showLogin, setShowLogin] = useState(false);
+            const [currentView, setCurrentView] = useState('home');
+            const [cart, setCart] = useState([]);
+            const [wishlist, setWishlist] = useState([]);
+            const [products, setProducts] = useState([]);
+            const [promoCodes, setPromoCodes] = useState([]);
+            const [selectedCategory, setSelectedCategory] = useState('all');
+            const [promoCode, setPromoCode] = useState('');
+            const [appliedPromo, setAppliedPromo] = useState(null);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [showMobileMenu, setShowMobileMenu] = useState(false);
+            const [notification, setNotification] = useState(null);
+            const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+            const [productForm, setProductForm] = useState({ id: null, name: '', price: '', image: '', category: 'JASLOG', description: '', bestSeller: false });
+            const [promoForm, setPromoForm] = useState({ id: null, code: '', discount: '', expiry: '', active: true });
+            const [imagePreview, setImagePreview] = useState('');
+            const [loading, setLoading] = useState(true);
+
+            const categories = [
+                { id: 'all', name: 'Semua Produk' },
+                { id: 'JASLOG', name: 'JASLOG' },
+                { id: 'MURPRIV', name: 'MURPRIV' },
+                { id: 'APK', name: 'APK' },
+                { id: 'MURLOG', name: 'MURLOG' }
+            ];
+
+            const testimonials = [
+                { id: 1, name: 'Buyer', rating: 5, comment: 'Pelayanan sangat memuaskan! Produk original.', avatar: '👨' },
+                { id: 2, name: 'Buyer', rating: 5, comment: 'Harga terjangkau, kualitas top! Recommended banget deh.', avatar: '👩' },
+                { id: 3, name: 'Buyer', rating: 5, comment: 'Admin responsif, proses transaksi mudah. Puas banget!', avatar: '👨‍💼' }
+            ];
+
+            const notify = (msg, type = 'success') => { setNotification({ message: msg, type }); setTimeout(() => setNotification(null), 3000); };
+
+            // Load data from Firestore on mount
+            useEffect(() => {
+                const loadData = async () => {
+                    setLoading(true);
+                    const [productsData, promoCodesData] = await Promise.all([
+                        FirestoreDB.getProducts(),
+                        FirestoreDB.getPromoCodes()
+                    ]);
+                    
+                    if (productsData.length === 0) {
+                        const defaultProducts = [
+                            { id: '1', name: 'Panel Pterodactyl', price: 15000, image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=500', category: 'Panel', description: 'Panel hosting game server terbaik', bestSeller: true },
+                            { id: '2', name: 'Script Bot WhatsApp', price: 25000, image: 'https://images.unsplash.com/photo-1611746872915-64382b5c76da?w=500', category: 'Script', description: 'Bot WhatsApp fitur lengkap', bestSeller: false },
+                            { id: '3', name: 'APK MOD WhatsApp', price: 10000, image: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=500', category: 'APK-BUG-WA', description: 'WhatsApp MOD anti banned', bestSeller: true },
+                            { id: '4', name: 'Jasa Pembuatan Bot', price: 50000, image: 'https://images.unsplash.com/photo-1605379399642-870262d3d051?w=500', category: 'JASA', description: 'Pembuatan bot custom sesuai kebutuhan', bestSeller: false }
+                        ];
+                        for (const product of defaultProducts) {
+                            await FirestoreDB.saveProduct(product);
+                        }
+                        setProducts(defaultProducts);
+                    } else {
+                        setProducts(productsData);
+                    }
+                    
+                    if (promoCodesData.length === 0) {
+                        const defaultPromos = [
+                            { id: '1', code: 'RESTZY10', discount: 10, expiry: '2025-12-31', active: true },
+                            { id: '2', code: 'WELCOME20', discount: 20, expiry: '2025-06-30', active: true }
+                        ];
+                        for (const promo of defaultPromos) {
+                            await FirestoreDB.savePromoCode(promo);
+                        }
+                        setPromoCodes(defaultPromos);
+                    } else {
+                        setPromoCodes(promoCodesData);
+                    }
+                    
+                    setWishlist(DB.load('wishlist', []));
+                    setCart(DB.load('cart', []));
+                    setLoading(false);
+                };
+                loadData();
+            }, []);
+
+            useEffect(() => { DB.save('wishlist', wishlist); }, [wishlist]);
+            useEffect(() => { DB.save('cart', cart); }, [cart]);
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (loginForm.username === 'egii store' && loginForm.password === 'egiistoregantengbanget') {
+                    setIsLoggedIn(true); setShowLogin(false); setCurrentView('admin'); setLoginForm({ username: '', password: '' }); notify('Login berhasil!');
+                } else { notify('Username/password salah!', 'error'); }
+            };
+
+            const handleImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 5 * 1024 * 1024) {
+                        notify('Ukuran gambar maksimal 5MB!', 'error');
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const base64String = reader.result;
+                        setProductForm({ ...productForm, image: base64String });
+                        setImagePreview(base64String);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const toggleWishlist = (p) => {
+                if (wishlist.some(i => i.id === p.id)) { setWishlist(wishlist.filter(i => i.id !== p.id)); notify('Dihapus dari wishlist'); }
+                else { setWishlist([...wishlist, p]); notify('Ditambahkan ke wishlist'); }
+            };
+
+            const addToCart = (p) => {
+                const ex = cart.find(i => i.id === p.id);
+                if (ex) setCart(cart.map(i => i.id === p.id ? { ...i, quantity: i.quantity + 1 } : i));
+                else setCart([...cart, { ...p, quantity: 1 }]);
+                notify('Ditambahkan ke keranjang');
+            };
+
+            const updateCart = (id, qty) => {
+                if (qty === 0) setCart(cart.filter(i => i.id !== id));
+                else setCart(cart.map(i => i.id === id ? { ...i, quantity: qty } : i));
+            };
+
+            const applyPromo = () => {
+                const p = promoCodes.find(x => x.code === promoCode && x.active);
+                if (p && new Date() <= new Date(p.expiry)) { setAppliedPromo(p); notify(`Kode ${p.code} berhasil! -${p.discount}%`); }
+                else { notify('Kode tidak valid!', 'error'); }
+            };
+
+            const calcTotal = () => {
+                const sub = cart.reduce((s, i) => s + (i.price * i.quantity), 0);
+                const dis = appliedPromo ? (sub * appliedPromo.discount / 100) : 0;
+                return { subtotal: sub, discount: dis, total: sub - dis };
+            };
+
+            const checkout = (platform) => {
+                const { subtotal, discount, total } = calcTotal();
+                
+                let msg = `Halo Admin EGII STORE! 👋%0A%0A`;
+                msg += `Saya ingin memesan:%0A%0A`;
+                msg += `📦 *DETAIL PESANAN:*%0A`;
+                
+                cart.forEach(i => {
+                    const itemTotal = i.price * i.quantity;
+                    msg += `• ${i.name}%0A`;
+                    msg += `  ${i.quantity}x @ Rp ${i.price.toLocaleString('id-ID')} = Rp ${itemTotal.toLocaleString('id-ID')}%0A`;
+                });
+                
+                msg += `%0A💰 *RINGKASAN PEMBAYARAN:*%0A`;
+                msg += `Subtotal: Rp ${subtotal.toLocaleString('id-ID')}%0A`;
+                
+                if (appliedPromo) {
+                    msg += `Diskon (${appliedPromo.code} -${appliedPromo.discount}%%): -Rp ${discount.toLocaleString('id-ID')}%0A`;
+                }
+                
+                msg += `*TOTAL BAYAR: Rp ${total.toLocaleString('id-ID')}*%0A%0A`;
+                msg += `Mohon informasi untuk proses pembayaran.%0A`;
+                msg += `Terima kasih! 🙏`;
+                
+                window.open(platform === 'whatsapp' ? `https://wa.me/6283879635059?text=${msg}` : `https://t.me/ev?text=${msg}`, '_blank');
+            };
+
+            const saveProduct = async () => {
+                if (!productForm.name || !productForm.price || !productForm.image) {
+                    notify('Mohon lengkapi semua field!', 'error');
+                    return;
+                }
+                
+                const productToSave = { 
+                    ...productForm, 
+                    price: +productForm.price,
+                    id: productForm.id || Date.now().toString()
+                };
+                
+                const success = await FirestoreDB.saveProduct(productToSave);
+                if (success) {
+                    const updatedProducts = await FirestoreDB.getProducts();
+                    setProducts(updatedProducts);
+                    setProductForm({ id: null, name: '', price: '', image: '', category: 'JASLOG', description: '', bestSeller: false });
+                    setImagePreview('');
+                    notify('Produk disimpan');
+                } else {
+                    notify('Gagal menyimpan produk', 'error');
+                }
+            };
+
+            const deleteProduct = async (id) => {
+                if (!confirm('Hapus produk ini?')) return;
+                const success = await FirestoreDB.deleteProduct(id);
+                if (success) {
+                    const updatedProducts = await FirestoreDB.getProducts();
+                    setProducts(updatedProducts);
+                    notify('Produk dihapus');
+                } else {
+                    notify('Gagal menghapus produk', 'error');
+                }
+            };
+
+            const savePromo = async () => {
+                const promoToSave = { 
+                    ...promoForm, 
+                    discount: +promoForm.discount,
+                    id: promoForm.id || Date.now().toString()
+                };
+                
+                const success = await FirestoreDB.savePromoCode(promoToSave);
+                if (success) {
+                    const updatedPromos = await FirestoreDB.getPromoCodes();
+                    setPromoCodes(updatedPromos);
+                    setPromoForm({ id: null, code: '', discount: '', expiry: '', active: true });
+                    notify('Promo disimpan');
+                } else {
+                    notify('Gagal menyimpan promo', 'error');
+                }
+            };
+
+            const deletePromo = async (id) => {
+                if (!confirm('Hapus promo ini?')) return;
+                const success = await FirestoreDB.deletePromoCode(id);
+                if (success) {
+                    const updatedPromos = await FirestoreDB.getPromoCodes();
+                    setPromoCodes(updatedPromos);
+                    notify('Promo dihapus');
+                } else {
+                    notify('Gagal menghapus promo', 'error');
+                }
+            };
+
+            const filtered = products.filter(p => (selectedCategory === 'all' || p.category === selectedCategory) && (!searchTerm || p.name.toLowerCase().includes(searchTerm.toLowerCase())));
+
+            const ProductCard = ({ product, index }) => {
+                const [ref, isVisible] = useScrollAnimation();
+                return (
+                    <div ref={ref} className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all hover:-translate-y-2 ${isVisible ? 'animate-slideInUp' : 'opacity-0'}`} style={{ animationDelay: `${index * 0.1}s` }}>
+                        <div className="relative">
+                            <img src={product.image} alt={product.name} className="w-full h-48 object-cover" />
+                            {product.bestSeller && (
+                                <div className="absolute top-4 left-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                                    BEST SELLER🤑
+                                </div>
+                            )}
+                            <button onClick={() => toggleWishlist(product)} className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-lg hover:scale-110 transition-all">
+                                <Heart size={18} filled={wishlist.some(i => i.id === product.id)} className={wishlist.some(i => i.id === product.id) ? 'text-pink-500' : 'text-gray-400'} />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <h3 className="font-bold text-xl mb-2">{product.name}</h3>
+                            <p className="text-gray-600 text-sm mb-4">{product.description}</p>
+                            <p className="text-2xl font-bold text-blue-600 mb-4">Rp {product.price.toLocaleString('id-ID')}</p>
+                            <button onClick={() => addToCart(product)} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all transform hover:scale-105">Tambah ke Keranjang</button>
+                        </div>
+                    </div>
+                );
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+                            <p className="text-xl font-semibold text-gray-700">Loading data...</p>
+                        </div>
+                    </div>
+                );
+            }
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+                    {notification && <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-xl shadow-2xl animate-slideInUp ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white font-semibold`}>{notification.message}</div>}
+                    
+                    {showLogin && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+                            <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl animate-scaleIn">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-bold">Admin Login</h2>
+                                    <button onClick={() => setShowLogin(false)} className="hover:bg-gray-100 p-2 rounded-lg transition-all"><X size={24} /></button>
+                                </div>
+                                <form onSubmit={handleLogin} className="space-y-4">
+                                    <input type="text" placeholder="Username" value={loginForm.username} onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })} className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-all" required />
+                                    <input type="password" placeholder="Password" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-all" required />
+                                    <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all transform hover:scale-105">Login</button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    <header className="bg-white shadow-md sticky top-0 z-40">
+                        <div className="max-w-7xl mx-auto px-4 py-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-4">
+                                    <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="lg:hidden transition-transform hover:scale-110">{showMobileMenu ? <X size={24} /> : <Menu size={24} />}</button>
+                                    <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">EGII-STORE</h1>
+                                </div>
+                                <div className="hidden lg:flex items-center space-x-6">
+                                    <button onClick={() => setCurrentView('home')} className={`px-4 py-2 rounded-lg font-medium transition-all transform hover:scale-105 ${currentView === 'home' ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-gray-100'}`}>Home</button>
+                                    <button onClick={() => setCurrentView('wishlist')} className="relative p-2 hover:bg-gray-100 rounded-lg transition-all"><Heart size={24} />{wishlist.length > 0 && <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center animate-float">{wishlist.length}</span>}</button>
+                                    <button onClick={() => setCurrentView('cart')} className="relative p-2 hover:bg-gray-100 rounded-lg transition-all"><ShoppingCart size={24} />{cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center animate-float">{cart.length}</span>}</button>
+                                    {isLoggedIn ? (<><button onClick={() => setCurrentView('admin')} className={`px-4 py-2 rounded-lg font-medium transition-all ${(currentView === 'admin' || currentView === 'promo') ? 'bg-purple-600 text-white shadow-lg' : 'hover:bg-gray-100'}`}>Dashboard</button><button onClick={() => { setIsLoggedIn(false); setCurrentView('home'); }} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"><LogOut size={24} /></button></>) : <button onClick={() => setShowLogin(true)} className="p-2 hover:bg-gray-100 rounded-lg transition-all"><User size={24} /></button>}
+                                </div>
+                                <div className="flex lg:hidden space-x-2">
+                                    <button onClick={() => setCurrentView('wishlist')} className="relative p-2"><Heart size={20} />{wishlist.length > 0 && <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">{wishlist.length}</span>}</button>
+                                    <button onClick={() => setCurrentView('cart')} className="relative p-2"><ShoppingCart size={20} />{cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">{cart.length}</span>}</button>
+                                </div>
+                            </div>
+                            {showMobileMenu && (
+                                <div className="lg:hidden mt-4 space-y-2 border-t pt-4 animate-slideInUp">
+                                    <button onClick={() => { setCurrentView('home'); setShowMobileMenu(false); }} className="block w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 transition-all">Home</button>
+                                    <button onClick={() => { setCurrentView('wishlist'); setShowMobileMenu(false); }} className="block w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 transition-all">Wishlist ({wishlist.length})</button>
+                                    {isLoggedIn ? (<><button onClick={() => { setCurrentView('admin'); setShowMobileMenu(false); }} className="block w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 transition-all">Dashboard</button><button onClick={() => { setIsLoggedIn(false); setShowMobileMenu(false); }} className="block w-full text-left px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-all">Logout</button></>) : <button onClick={() => { setShowLogin(true); setShowMobileMenu(false); }} className="block w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 transition-all">Admin</button>}
+                                </div>
+                            )}
+                        </div>
+                    </header>
+
+                    <main className="max-w-7xl mx-auto px-4 py-8">
+                        {currentView === 'home' && (
+                            <>
+                                <div className="relative hero-gradient rounded-3xl overflow-hidden mb-8 shadow-2xl">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-purple-600/90"></div>
+                                    <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-8 p-8 lg:p-12">
+                                        <div className="text-white space-y-6 flex flex-col justify-center animate-slideInLeft">
+                                            <h2 className="text-4xl lg:text-6xl font-bold leading-tight">TOKO MURAH AMAN TERPERCAYA DAN MURMER</h2>
+                                            <p className="text-lg lg:text-xl opacity-90">MAU BELI APK/JASLOG/JOIN MURLOG? BELI DI SINI AJA DENGAN HARGA YANG MURAH MERIAH DAN AMAN</p>
+                                            <div className="flex flex-wrap gap-4">
+                                                <div className="glass rounded-xl p-4 flex-1 min-w-[150px] animate-slideInUp delay-100">
+                                                    <p className="text-sm opacity-90">Garansi Remis</p>
+                                                    <p className="text-2xl font-bold">10 HARI ✓</p>
+                                                </div>
+                                                <div className="glass rounded-xl p-4 flex-1 min-w-[150px] animate-slideInUp delay-200">
+                                                    <p className="text-sm opacity-90">KODE PROMO</p>
+                                                    <p className="text-2xl font-bold">SUPER DUPER MURAH ✓</p>
+                                                </div>
+                                                <div className="glass rounded-xl p-4 flex-1 min-w-[150px] animate-slideInUp delay-300">
+                                                    <p className="text-sm opacity-90">HARGA TERJANGKAU</p>
+                                                    <p className="text-2xl font-bold">MURAH BANGETT ✓</p>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <button onClick={() => document.getElementById('products').scrollIntoView({ behavior: 'smooth' })} className="w-full bg-white text-blue-600 px-8 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-all transform hover:scale-105 flex items-center justify-center gap-2 animate-slideInUp delay-400">
+                                                    LIHAT PRODUK <ChevronDown className="animate-float" />
+                                                </button>
+                                                <button onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })} className="w-full bg-white text-blue-600 px-8 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-all transform hover:scale-105 flex items-center justify-center gap-2 animate-slideInUp delay-400">
+                                                    KEUNGGULAN <ChevronDown className="animate-float" />
+                                                </button>
+                                                <button onClick={() => document.getElementById('testimonials').scrollIntoView({ behavior: 'smooth' })} className="w-full bg-white text-blue-600 px-8 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-all transform hover:scale-105 flex items-center justify-center gap-2 animate-slideInUp delay-400">
+                                                    TESTIMONI <ChevronDown className="animate-float" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="relative h-[300px] lg:h-[400px] animate-slideInUp delay-200">
+                                            <img src="https://img1.pixhost.to/images/10655/668347290_ochobot.jpg" alt="Smartphones" className="absolute inset-0 w-full h-full object-cover rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-500" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="products" className="mb-8 space-y-4">
+                                    <div className="relative animate-fadeIn">
+                                        <Search size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                        <input type="text" placeholder="Cari produk..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 rounded-xl border focus:ring-2 focus:ring-blue-500 transition-all shadow-sm" />
+                                    </div>
+                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                        {categories.map((c, i) => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-6 py-2 rounded-full font-medium whitespace-nowrap transition-all transform hover:scale-105 animate-fadeIn ${selectedCategory === c.id ? 'bg-blue-600 text-white shadow-lg' : 'bg-white hover:bg-gray-100'}`} style={{ animationDelay: `${i * 0.1}s` }}>{c.name}</button>)}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                                    {filtered.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+                                </div>
+
+                                <div id="features" className="mb-12">
+                                    <h2 className="text-3xl font-bold text-center mb-8 animate-slideInUp">Keunggulan Kami</h2>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                        <div className="bg-white rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition-all hover:-translate-y-2 animate-slideInUp">
+                                            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <Tag size={32} className="text-white" />
+                                            </div>
+                                            <h3 className="font-bold text-lg mb-2">Belanja dengan Banyak</h3>
+                                            <p className="text-gray-600 text-sm">Promo Menarik 🛍️</p>
+                                        </div>
+                                        <div className="bg-white rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition-all hover:-translate-y-2 animate-slideInUp delay-100">
+                                            <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <Shield size={32} className="text-white" />
+                                            </div>
+                                            <h3 className="font-bold text-lg mb-2">Garansi dan</h3>
+                                            <p className="text-gray-600 text-sm">Jaminan 100% ✓</p>
+                                        </div>
+                                        <div className="bg-white rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition-all hover:-translate-y-2 animate-slideInUp delay-200">
+                                            <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <MessageCircle size={32} className="text-white" />
+                                            </div>
+                                            <h3 className="font-bold text-lg mb-2">Pembayaran Aman</h3>
+                                            <p className="text-gray-600 text-sm">dengan Via WhatsApp 💬</p>
+                                        </div>
+                                        <div className="bg-white rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition-all hover:-translate-y-2 animate-slideInUp delay-300">
+                                            <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <Award size={32} className="text-white" />
+                                            </div>
+                                            <h3 className="font-bold text-lg mb-2">Layanan Amanah</h3>
+                                            <p className="text-gray-600 text-sm">dan Terpercaya ✅</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="testimonials" className="mb-12">
+                                    <h2 className="text-3xl font-bold text-center mb-8 animate-slideInUp">Testimoni Pelanggan</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                        {testimonials.map((t, i) => (
+                                            <div key={t.id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all animate-slideInUp" style={{ animationDelay: `${i * 0.1}s` }}>
+                                                <div className="flex items-center gap-4 mb-4">
+                                                    <div className="text-4xl">{t.avatar}</div>
+                                                    <div>
+                                                        <h4 className="font-bold">{t.name}</h4>
+                                                        <div className="flex gap-1">
+                                                            {[...Array(t.rating)].map((_, i) => <Star key={i} size={16} filled className="text-yellow-400" />)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <p className="text-gray-600 italic">"{t.comment}"</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-8 text-white text-center mb-8 shadow-2xl animate-slideInUp">
+                                    <h2 className="text-3xl font-bold mb-4">Hubungi Kami</h2>
+                                    <p className="mb-6 opacity-90">Siap melayani Anda dengan cepat dan ramah</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+                                        <a href="https://wa.me/6283879635059" target="_blank" rel="noopener noreferrer" className="bg-white text-green-600 px-6 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-all transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg">
+                                            <MessageCircle size={24} /> WhatsApp
+                                        </a>
+                                        <a href="https://t.me/Reev" target="_blank" rel="noopener noreferrer" className="bg-white text-blue-500 px-6 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-all transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg">
+                                            <MessageCircle size={24} /> Telegram
+                                        </a>
+                                        <a href="https://whatsapp.com/channel/0029Vb78O3X2v1IvyyoMCc2W" target="_blank" rel="noopener noreferrer" className="bg-white text-green-600 px-6 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-all transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg">
+                                            <MessageCircle size={24} /> Channel WA
+                                        </a>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {currentView === 'wishlist' && (
+                            <div className="animate-fadeIn">
+                                <h2 className="text-3xl font-bold mb-8 animate-slideInLeft">Wishlist Saya</h2>
+                                {wishlist.length === 0 ? (
+                                    <div className="bg-white rounded-2xl p-12 text-center shadow-lg animate-scaleIn">
+                                        <Heart size={64} className="mx-auto text-gray-300 mb-4" />
+                                        <p className="text-xl text-gray-600 mb-4">Wishlist kosong</p>
+                                        <button onClick={() => setCurrentView('home')} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all transform hover:scale-105">Mulai Belanja</button>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {wishlist.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {currentView === 'cart' && (
+                            <div className="max-w-4xl mx-auto animate-fadeIn">
+                                <h2 className="text-3xl font-bold mb-8 animate-slideInLeft">Keranjang Belanja</h2>
+                                {cart.length === 0 ? (
+                                    <div className="bg-white rounded-2xl p-12 text-center shadow-lg animate-scaleIn">
+                                        <ShoppingCart size={64} className="mx-auto text-gray-300 mb-4" />
+                                        <p className="text-xl text-gray-600 mb-4">Keranjang kosong</p>
+                                        <button onClick={() => setCurrentView('home')} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all transform hover:scale-105">Mulai Belanja</button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {cart.map((i, idx) => (
+                                            <div key={i.id} className="bg-white rounded-2xl p-6 shadow-lg flex flex-col sm:flex-row gap-6 hover:shadow-xl transition-all animate-slideInUp" style={{ animationDelay: `${idx * 0.1}s` }}>
+                                                <img src={i.image} className="w-full sm:w-32 h-32 object-cover rounded-xl" />
+                                                <div className="flex-1">
+                                                    <h3 className="font-bold text-xl mb-2">{i.name}</h3>
+                                                    <p className="text-blue-600 font-bold text-lg mb-4">Rp {i.price.toLocaleString('id-ID')}</p>
+                                                    <div className="flex items-center gap-4">
+                                                        <button onClick={() => updateCart(i.id, i.quantity - 1)} className="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300 font-bold transition-all transform hover:scale-110">-</button>
+                                                        <span className="font-bold text-lg">{i.quantity}</span>
+                                                        <button onClick={() => updateCart(i.id, i.quantity + 1)} className="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300 font-bold transition-all transform hover:scale-110">+</button>
+                                                        <button onClick={() => updateCart(i.id, 0)} className="ml-auto text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all"><Trash2 size={20} /></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <div className="bg-white rounded-2xl p-6 shadow-lg animate-slideInUp" style={{ animationDelay: `${cart.length * 0.1}s` }}>
+                                            <div className="mb-4">
+                                                <label className="block text-sm font-medium mb-2">Kode Promo</label>
+                                                <div className="flex gap-2">
+                                                    <input type="text" value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="Masukkan kode promo" className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-all" />
+                                                    <button onClick={applyPromo} className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-semibold transition-all transform hover:scale-105">Gunakan</button>
+                                                </div>
+                                                {appliedPromo && <p className="text-green-600 mt-2 font-medium text-sm">✓ Kode {appliedPromo.code} digunakan (-{appliedPromo.discount}%)</p>}
+                                            </div>
+                                            <div className="border-t pt-4 space-y-2">
+                                                <div className="flex justify-between text-gray-600"><span>Subtotal:</span><span>Rp {calcTotal().subtotal.toLocaleString('id-ID')}</span></div>
+                                                {appliedPromo && <div className="flex justify-between text-green-600"><span>Diskon:</span><span>-Rp {calcTotal().discount.toLocaleString('id-ID')}</span></div>}
+                                                <div className="flex justify-between text-2xl font-bold text-gray-800 pt-2"><span>Total:</span><span>Rp {calcTotal().total.toLocaleString('id-ID')}</span></div>
+                                            </div>
+                                            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <button onClick={() => checkout('whatsapp')} className="bg-green-600 text-white py-4 rounded-xl font-semibold hover:bg-green-700 transition-all transform hover:scale-105 shadow-lg">Checkout via WhatsApp</button>
+                                                <button onClick={() => checkout('telegram')} className="bg-blue-500 text-white py-4 rounded-xl font-semibold hover:bg-blue-600 transition-all transform hover:scale-105 shadow-lg">Checkout via Telegram</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    {(currentView === 'admin' || currentView === 'promo') && isLoggedIn && (
+                            <div className="space-y-8 animate-fadeIn">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-3xl font-bold animate-slideInLeft">Dashboard Admin</h2>
+                                    <div className="flex gap-4">
+                                        <button onClick={() => setCurrentView('admin')} className={`px-6 py-2 rounded-xl font-semibold transition-all transform hover:scale-105 ${currentView === 'admin' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-200 hover:bg-gray-300'}`}>Produk</button>
+                                        <button onClick={() => setCurrentView('promo')} className={`px-6 py-2 rounded-xl font-semibold transition-all transform hover:scale-105 ${currentView === 'promo' ? 'bg-purple-600 text-white shadow-lg' : 'bg-gray-200 hover:bg-gray-300'}`}>Kode Promo</button>
+                                    </div>
+                                </div>
+
+                                {currentView === 'admin' && (
+                                    <>
+                                        <div className="bg-white rounded-2xl p-6 shadow-lg animate-slideInUp">
+                                            <h3 className="text-xl font-bold mb-4">{productForm.id ? 'Edit Produk' : 'Tambah Produk'}</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <input type="text" placeholder="Nama Produk" value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-all" />
+                                                <input type="number" placeholder="Harga" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-all" />
+                                                <div className="md:col-span-2">
+                                                    <label className="block text-sm font-medium mb-2">Gambar Produk</label>
+                                                    <div className="flex flex-col gap-4">
+                                                        <input 
+                                                            type="file" 
+                                                            accept="image/*" 
+                                                            onChange={handleImageUpload}
+                                                            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
+                                                        />
+                                                        <div className="text-sm text-gray-500">Atau gunakan URL gambar:</div>
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="https://example.com/image.jpg" 
+                                                            value={productForm.image.startsWith('data:') ? '' : productForm.image} 
+                                                            onChange={(e) => {
+                                                                setProductForm({ ...productForm, image: e.target.value });
+                                                                setImagePreview(e.target.value);
+                                                            }} 
+                                                            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-all" 
+                                                        />
+                                                        {(imagePreview || productForm.image) && (
+                                                            <div className="relative">
+                                                                <img 
+                                                                    src={imagePreview || productForm.image} 
+                                                                    alt="Preview" 
+                                                                    className="w-full h-48 object-cover rounded-lg border-2 border-blue-500"
+                                                                    onError={(e) => {
+                                                                        e.target.src = 'https://via.placeholder.com/400x300?text=Gambar+Tidak+Valid';
+                                                                    }}
+                                                                />
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        setProductForm({ ...productForm, image: '' });
+                                                                        setImagePreview('');
+                                                                    }}
+                                                                    className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all"
+                                                                >
+                                                                    <X size={16} />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <select value={productForm.category} onChange={(e) => setProductForm({ ...productForm, category: e.target.value })} className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-all">
+                                                    <option value="JASLOG">JASLOG</option>
+                                                    <option value="MURPRIV">MURPRIV</option>
+                                                    <option value="APK">APK</option>
+                                                    <option value="MURLOG">MURLOG</option>
+                                                </select>
+                                                <input type="text" placeholder="Deskripsi" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="md:col-span-2 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 transition-all" />
+                                                <div className="md:col-span-2 flex items-center gap-3">
+                                                    <input type="checkbox" id="bestSeller" checked={productForm.bestSeller} onChange={(e) => setProductForm({ ...productForm, bestSeller: e.target.checked })} className="w-5 h-5" />
+                                                    <label htmlFor="bestSeller" className="font-medium">Best Seller 🤑</label>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 flex gap-4">
+                                                <button onClick={saveProduct} className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold transition-all transform hover:scale-105">{productForm.id ? 'Update' : 'Tambah'}</button>
+                                                {productForm.id && <button onClick={() => { setProductForm({ id: null, name: '', price: '', image: '', category: 'Panel', description: '', bestSeller: false }); setImagePreview(''); }} className="bg-gray-400 text-white px-6 py-2 rounded-lg hover:bg-gray-500 font-semibold transition-all">Batal</button>}
+                                            </div>
+                                        </div>
+                                        <div className="bg-white rounded-2xl p-6 shadow-lg overflow-x-auto animate-slideInUp delay-100">
+                                            <h3 className="text-xl font-bold mb-4">Daftar Produk</h3>
+                                            <table className="w-full min-w-[600px]">
+                                                <thead className="bg-gray-50">
+                                                    <tr>
+                                                        <th className="px-4 py-3 text-left text-sm font-semibold">Produk</th>
+                                                        <th className="px-4 py-3 text-left text-sm font-semibold">Harga</th>
+                                                        <th className="px-4 py-3 text-left text-sm font-semibold">Kategori</th>
+                                                        <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
+                                                        <th className="px-4 py-3 text-right text-sm font-semibold">Aksi</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y">
+                                                    {products.map(p => (
+                                                        <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                                                            <td className="px-4 py-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <img src={p.image} className="w-12 h-12 object-cover rounded-lg" />
+                                                                    <span className="font-medium">{p.name}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-4 text-blue-600 font-semibold">Rp {p.price.toLocaleString('id-ID')}</td>
+                                                            <td className="px-4 py-4"><span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">{p.category}</span></td>
+                                                            <td className="px-4 py-4">
+                                                                {p.bestSeller && <span className="px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full text-xs font-bold">BEST SELLER🤑</span>}
+                                                            </td>
+                                                            <td className="px-4 py-4 text-right">
+                                                                <div className="flex gap-2 justify-end">
+                                                                    <button onClick={() => { setProductForm(p); setImagePreview(p.image); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"><Edit2 size={18} /></button>
+                                                                    <button onClick={() => deleteProduct(p.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={18} /></button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </>
+                                )}
+
+                                {currentView === 'promo' && (
+                                    <>
+                                        <div className="bg-white rounded-2xl p-6 shadow-lg animate-slideInUp">
+                                            <h3 className="text-xl font-bold mb-4">{promoForm.id ? 'Edit Promo' : 'Tambah Promo'}</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <input type="text" placeholder="Kode Promo" value={promoForm.code} onChange={(e) => setPromoForm({ ...promoForm, code: e.target.value.toUpperCase() })} className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 transition-all" />
+                                                <input type="number" placeholder="Diskon (%)" value={promoForm.discount} onChange={(e) => setPromoForm({ ...promoForm, discount: e.target.value })} className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 transition-all" />
+                                                <input type="date" value={promoForm.expiry} onChange={(e) => setPromoForm({ ...promoForm, expiry: e.target.value })} className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 transition-all" />
+                                                <div className="flex items-center gap-3">
+                                                    <input type="checkbox" id="active" checked={promoForm.active} onChange={(e) => setPromoForm({ ...promoForm, active: e.target.checked })} className="w-5 h-5" />
+                                                    <label htmlFor="active" className="font-medium">Aktif</label>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 flex gap-4">
+                                                <button onClick={savePromo} className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 font-semibold transition-all transform hover:scale-105">{promoForm.id ? 'Update' : 'Tambah'}</button>
+                                                {promoForm.id && <button onClick={() => setPromoForm({ id: null, code: '', discount: '', expiry: '', active: true })} className="bg-gray-400 text-white px-6 py-2 rounded-lg hover:bg-gray-500 font-semibold transition-all">Batal</button>}
+                                            </div>
+                                        </div>
+                                        <div className="bg-white rounded-2xl p-6 shadow-lg animate-slideInUp delay-100">
+                                            <h3 className="text-xl font-bold mb-4">Daftar Promo</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {promoCodes.map((p, i) => (
+                                                    <div key={p.id} className="border rounded-xl p-4 hover:shadow-md transition-all animate-scaleIn" style={{ animationDelay: `${i * 0.1}s` }}>
+                                                        <div className="flex justify-between items-start mb-3">
+                                                            <div>
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                    <Tag size={20} className="text-purple-600" />
+                                                                    <span className="font-bold text-xl text-purple-600">{p.code}</span>
+                                                                </div>
+                                                                <p className="text-2xl font-bold">Diskon {p.discount}%</p>
+                                                            </div>
+                                                            <span className={`px-3 py-1 rounded-full text-sm font-semibold ${p.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.active ? 'Aktif' : 'Nonaktif'}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-gray-600 mb-4">
+                                                            <Calendar size={16} />
+                                                            <span className="text-sm">Expired: {p.expiry}</span>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => setPromoForm(p)} className="flex-1 bg-purple-50 text-purple-600 py-2 rounded-lg hover:bg-purple-100 font-medium transition-all">Edit</button>
+                                                            <button onClick={() => deletePromo(p.id)} className="flex-1 bg-red-50 text-red-600 py-2 rounded-lg hover:bg-red-100 font-medium transition-all">Hapus</button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </main>
+                    <footer className="bg-gray-800 text-white mt-16 py-8">
+                        <div className="max-w-7xl mx-auto px-4 text-center">
+                            <p className="text-lg font-semibold mb-2">EGII-STORE kang logo terpercaya dan amanah</p>
+                            <p className="text-gray-400">© EGII-STORE 2028.</p>
+                            <p className="text-gray-500 text-sm mt-2">AMAN✅ | FEMES DIKIT LAGI ✅ | MURAH MERIAH✅</p>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<PhoneEcommerce />);
+    </script>
+</body>
+</html>
