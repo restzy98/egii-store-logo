@@ -1,0 +1,1 @@
+# egii-store-logo
